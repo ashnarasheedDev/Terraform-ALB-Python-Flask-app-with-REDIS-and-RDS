@@ -14,3 +14,8 @@ Application Load Balancer (ALB) and Auto Scaling Groups (ASG) together can be hi
 - Database Hosting with Amazon RDS: Leveraging Amazon RDS for your database hosting provides scalability, high availability, and managed database services. You can choose a suitable database engine (e.g., MySQL, PostgreSQL) supported by Amazon RDS for your Python Flask application. Amazon RDS takes care of backups, patching, and automatic scaling, allowing you to focus on application development.
 
 - Amazon Route 53 private zones: Create DNS names for the private IPs of your Redis and RDS instances and applying them in your configuration file  of applcation is a good practice. It offers several benefits.By leveraging Route 53 private zones, you can automate the process of updating the IP addresses of your DB and Redis hosts. When Terraform destroys and applies the infrastructure, it can update the DNS records in the private zone, allowing your Python application to fetch the new IP addresses automatically. This ensures that your application can adapt to changes without manual intervention.
+
+
+**The following diagram illustrates the basic components.**
+
+![alt text](https://i.ibb.co/rQG8FBc/Whats-App-Image-2023-05-20-at-9-22-23-PM-1.jpg)
