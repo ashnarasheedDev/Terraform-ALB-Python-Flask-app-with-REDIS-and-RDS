@@ -19,3 +19,17 @@ Application Load Balancer (ALB) and Auto Scaling Groups (ASG) together can be hi
 **The following diagram illustrates the basic components.**
 
 ![alt text](https://i.ibb.co/rQG8FBc/Whats-App-Image-2023-05-20-at-9-22-23-PM-1.jpg)
+
+**Use the following command to install Terraform**
+```sh
+wget https://releases.hashicorp.com/terraform/0.15.3/terraform_0.15.3_linux_amd64.zip
+unzip terraform_0.15.3_linux_amd64.zip 
+ls -l
+-rwxr-xr-x 1 root root 79991413 May  6 18:03 terraform  <<=======
+-rw-r--r-- 1 root root 32743141 May  6 18:50 terraform_0.15.3_linux_amd64.zip
+mv terraform /usr/bin/
+which terraform 
+/usr/bin/terraform
+```
+**Let's get started:**
+
