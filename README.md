@@ -209,28 +209,28 @@ resource "aws_nat_gateway" "nat" {
 ```
 ### Step 2 - Setting up REDIS & RDS Resources
 
->Below codee is for creating security groups and resources for a Redis server and an RDS (Relational Database Service) instance. It sets up the necessary security group rules and configurations for allowing access to the Redis and RDS services. Here's a breakdown of the code:
+> Below code is for creating security groups and resources for a Redis server and an RDS (Relational Database Service) instance. It sets up the necessary security group rules and configurations for allowing access to the Redis and RDS services. Here's a breakdown of the code:
 
-    Redis Security Group:
+  1. Redis Security Group:
         Creates an AWS security group named "redis" with ingress rules allowing TCP traffic on port 6379 from all IP addresses (0.0.0.0/0 and ::/0).
         Specifies egress rules that allow all traffic (from port 0 to port 0) to all IP addresses.
         Tags the security group with a name based on the project_name variable.
 
-    Redis Instance:
+  2. Redis Instance:
         Creates an AWS EC2 instance for the Redis server using the specified AMI, instance type, key name, and user data (the redis.sh script).
         Associates the Redis security group with the instance.
         Places the instance in the specified subnet.
         Tags the instance with a name based on the project_name variable.
 
-    RDS Security Group:
+   3. RDS Security Group:
         Creates an AWS security group named "rds" with an ingress rule allowing TCP traffic on port 3306 from all IP addresses (0.0.0.0/0 and ::/0).
         Specifies egress rules that allow all traffic (from port 0 to port 0) to all IP addresses.
         Tags the security group with a name based on the project_name variable.
 
-    RDS Subnet Group:
+   4. RDS Subnet Group:
         Creates an AWS RDS subnet group named "rds_subnet" and associates it with the specified private subnets.
 
-    RDS Instance:
+   5. RDS Instance:
         Creates an AWS RDS instance with the specified engine, storage, version, instance class, credentials, subnet group, security group, and other configurations.
         
 ```
@@ -333,4 +333,16 @@ resource "aws_db_instance" "rds" {
   vpc_security_group_ids = ["${aws_security_group.rds.id}"]
   skip_final_snapshot    = true
   publicly_accessible    = true
+```
+><b>Userdata for redis server redis.sh</b>
+
+```
+#/bin/bash
+
+sudo hostnamectl set-hostname blogapp-redis.server
+sudo yum install docker -y
+sudo systemctl restart docker
+sudo systemctl enable docker
+sudo usermod -a -G docker ec2-user
+sudo docker container run --name redis -d -p 6379:6379 --restart always redis:latest
 ```
