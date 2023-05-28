@@ -33,3 +33,46 @@ which terraform
 ```
 **Let's get started:**
 
+### Step 1 - Create a private VPC
+
+By deploying your resources within a private VPC, you can isolate them from the public internet and establish stricter control over network access. This helps protect your applications and data from unauthorized access and potential security threats.
+
+<b>Create provider.tf</b>
+```
+provider "aws" {
+  access_key = "<your-access-key>"
+  secret_key = "<your-secret-key>"
+  region     = "ap-south-1"
+}
+
+```
+<b>Create datasources.tf to fetch umber of AZ and public hosted zone</b>
+```
+data "aws_availability_zones" "azs" {
+  state = "available"
+}
+
+data "aws_route53_zone" "myzone" {
+  name         = "ashna.online"
+  private_zone = false
+}
+```
+<b>Create variables.tf</b>
+```
+variable "ami_id" {
+  default = "ami-0607784b46cbe5816"
+}
+
+variable "project_name" {
+  default = "blog_app"
+}
+
+variable "instance_type" {
+  default = "t2.micro"
+}
+
+variable "vpc_cidr" {
+  default = "10.1.0.0/16"
+  type    = string
+}
+```
