@@ -346,3 +346,274 @@ sudo systemctl enable docker
 sudo usermod -a -G docker ec2-user
 sudo docker container run --name redis -d -p 6379:6379 --restart always redis:latest
 ```
+### Step 3 - Create ALB,ASG and it's assosiated resources
+
+ I created AMI of my application server for the launch configuration in the Terraform code. My application runs on 8080 port with REDIS for session management and RDS for DB Host. I have an updated and outdated version of my application which I planed to configure using two target group. I named it as blog and wiki. Let's see the detailed setup.
+ 
+  -  ALB Security Group for ALB & TG:
+        Creates an AWS security group named "alb" with ingress rules allowing TCP traffic on ports 80 and 8080 from all IP addresses (0.0.0.0/0 and ::/0).
+        Specifies egress rules that allow all traffic (from port 0 to port 0) to all IP addresses.
+        Tags the security group with a name based on the project_name variable.
+        Includes a lifecycle block with the create_before_destroy set to true, ensuring that the security group is created before any existing one is destroyed.
+
+ -  Target Groups:
+        Creates two AWS target groups, "blog" and "wiki," with the specified port, protocol, VPC ID, and health check configurations.
+        Each target group includes a lifecycle block with create_before_destroy set to true.
+
+ - ALB:
+        Creates an AWS Application Load Balancer (ALB) with the specified name, internal/external accessibility, load balancer type, security groups, subnets, and deletion protection.
+        Tags the ALB with a name based on the project_name variable.
+        Includes an output block that exposes the DNS name of the ALB.
+
+ -  ALB Listener:
+        Creates an ALB listener for HTTP traffic on port 80 with a default fixed response when no matching rule is found.
+        Depends on the ALB resource being created before the listener.
+
+ -  ALB Listener Rules:
+        Creates two ALB listener rules, one for the "wiki" target group and one for the "blog" target group.
+        The rules are based on the host header values and forward traffic to the respective target groups.
+        Each rule includes a condition block specifying the host header values.
+
+ -  Launch Configurations:
+        Creates AWS launch configurations for the "blog" and "wiki" instances.
+        Specifies the instance image ID, type, key name, and security group (ALB security group).
+        Image ID I used is my applicaton sever's AMI.
+
+- Auto Scaling Groups:
+        Creates AWS Auto Scaling Groups (ASGs) for the "blog" and "wiki" instances.
+        Specifies the minimum, maximum, and desired capacity, launch configuration, subnet IDs, target group ARNs, health check type, and grace period.
+        Tags the ASGs with names and sets the propagate_at_launch attribute to true.
+        
+```
+#Create a security group for load balancer
+
+resource "aws_security_group" "alb" {
+  name   = "sg_alb_blog"
+  vpc_id = aws_vpc.main.id
+
+  ingress {
+    description      = "HTTPS"
+    from_port        = 80
+    to_port          = 80
+    protocol         = "tcp"
+    cidr_blocks      = ["0.0.0.0/0"]
+    ipv6_cidr_blocks = ["::/0"]
+
+  }
+
+  ingress {
+    description      = "HTTPS"
+    from_port        = 8080
+    to_port          = 8080
+    protocol         = "tcp"
+    cidr_blocks      = ["0.0.0.0/0"]
+    ipv6_cidr_blocks = ["::/0"]
+
+  }
+
+  egress {
+    from_port        = 0
+    to_port          = 0
+    protocol         = "-1"
+    cidr_blocks      = ["0.0.0.0/0"]
+    ipv6_cidr_blocks = ["::/0"]
+  }
+
+  tags = {
+    Name = "${var.project_name}"
+  }
+  lifecycle {
+    create_before_destroy = true
+  }
+}
+
+## create target group blog
+
+resource "aws_lb_target_group" "blog" {
+  name     = "blog-tg"
+  port     = 8080
+  protocol = "HTTP"
+  vpc_id   = aws_vpc.main.id
+
+
+  health_check {
+    healthy_threshold   = 2
+    unhealthy_threshold = 2
+    interval            = 30
+    enabled             = true
+    protocol            = "HTTP"
+    path                = "/"
+    matcher             = "200"
+
+  }
+  lifecycle {
+    create_before_destroy = true
+  }
+
+}
+
+## create target group wiki
+
+resource "aws_lb_target_group" "wiki" {
+  name     = "wiki-tg"
+  port     = 8080
+  protocol = "HTTP"
+  vpc_id   = aws_vpc.main.id
+
+
+  health_check {
+    healthy_threshold   = 2
+    unhealthy_threshold = 2
+    interval            = 30
+    enabled             = true
+    protocol            = "HTTP"
+    path                = "/"
+    matcher             = "200"
+
+
+
+  }
+  lifecycle {
+    create_before_destroy = true
+  }
+
+}
+
+# Create an ALB
+
+resource "aws_lb" "alb" {
+  name                       = "blog-app-alb"
+  internal                   = false
+  load_balancer_type         = "application"
+  security_groups            = [aws_security_group.alb.id]
+  subnets                    = [aws_subnet.publicsubnets[0].id, aws_subnet.publicsubnets[1].id]
+  enable_deletion_protection = false
+  tags = {
+    Name = "${var.project_name}-alb"
+  }
+}
+
+output "alb-endpoint" {
+  value = aws_lb.alb.dns_name
+}
+
+
+# Create Listener for ALB
+
+resource "aws_lb_listener" "listener_http" {
+  load_balancer_arn = aws_lb.alb.arn
+  port              = 80
+  protocol          = "HTTP"
+
+
+
+  default_action {
+    type = "fixed-response"
+    fixed_response {
+      content_type = "text/plain"
+      message_body = " No such Site Found"
+      status_code  = "200"
+    }
+
+  }
+  depends_on = [aws_lb.alb]
+
+}
+
+# Create Listener rules for ALB
+
+resource "aws_lb_listener_rule" "wiki" {
+  listener_arn = aws_lb_listener.listener_http.arn
+  priority     = 1
+
+  action {
+    type             = "forward"
+    target_group_arn = aws_lb_target_group.wiki.arn
+  }
+
+  condition {
+    host_header {
+      values = ["wiki.ashna.online"]
+    }
+  }
+}
+
+
+resource "aws_lb_listener_rule" "blog" {
+  listener_arn = aws_lb_listener.listener_http.arn
+  priority     = 2
+
+  action {
+    type             = "forward"
+    target_group_arn = aws_lb_target_group.blog.arn
+  }
+
+  condition {
+    host_header {
+      values = ["blog.ashna.online"]
+    }
+  }
+}
+
+
+# Create the launch configuration for blog instances
+
+resource "aws_launch_configuration" "blog_lc" {
+  name            = "launch-config-blog"
+  image_id        = "ami-06a68dc98621ff494" # Replace with your AMI ID for blog instances
+  instance_type   = "t2.micro"              # Replace with your desired instance type
+  key_name        = "mumbai-region"
+  security_groups = [aws_security_group.alb.id] # Replace with your security group IDs
+}
+
+# Create the launch configuration for wiki instances
+
+resource "aws_launch_configuration" "wiki_lc" {
+  name            = "launch-config-wiki"
+  image_id        = "ami-06a68dc98621ff494" # Replace with your AMI ID for wiki instances
+  instance_type   = "t2.micro"              # Replace with your desired instance type
+  key_name        = "mumbai-region"
+  security_groups = [aws_security_group.alb.id] # Replace with your security group IDs
+}
+
+# Create the Auto Scaling Group for blog instances
+
+resource "aws_autoscaling_group" "asg_blog" {
+  name                      = "asg-blog"
+  min_size                  = 2
+  max_size                  = 2
+  desired_capacity          = 2
+  launch_configuration      = aws_launch_configuration.blog_lc.name
+  vpc_zone_identifier       = [aws_subnet.publicsubnets[0].id, aws_subnet.publicsubnets[1].id] # Replace with your subnet IDs
+  target_group_arns         = [aws_lb_target_group.blog.arn]
+  health_check_type         = "ELB"
+  health_check_grace_period = 300
+
+  tag {
+    key                 = "Name"
+    value               = "blog-asg"
+    propagate_at_launch = true
+  }
+
+}
+
+# Create the Auto Scaling Group for wiki instances
+
+resource "aws_autoscaling_group" "asg_wiki" {
+  name                      = "asg-wiki"
+  min_size                  = 2
+  max_size                  = 2
+  desired_capacity          = 2
+  launch_configuration      = aws_launch_configuration.wiki_lc.name
+  vpc_zone_identifier       = [aws_subnet.publicsubnets[0].id, aws_subnet.publicsubnets[1].id] # Replace with your subnet IDs
+  target_group_arns         = [aws_lb_target_group.wiki.arn]
+  health_check_type         = "ELB"
+  health_check_grace_period = 300
+  tag {
+    key                 = "Name"
+    value               = "wiki-asg"
+    propagate_at_launch = true
+  }
+
+}
+```
