@@ -207,3 +207,130 @@ resource "aws_nat_gateway" "nat" {
   depends_on = [aws_internet_gateway.igw]
 }
 ```
+### Step 2 - Setting up REDIS & RDS Resources
+
+>Below codee is for creating security groups and resources for a Redis server and an RDS (Relational Database Service) instance. It sets up the necessary security group rules and configurations for allowing access to the Redis and RDS services. Here's a breakdown of the code:
+
+    Redis Security Group:
+        Creates an AWS security group named "redis" with ingress rules allowing TCP traffic on port 6379 from all IP addresses (0.0.0.0/0 and ::/0).
+        Specifies egress rules that allow all traffic (from port 0 to port 0) to all IP addresses.
+        Tags the security group with a name based on the project_name variable.
+
+    Redis Instance:
+        Creates an AWS EC2 instance for the Redis server using the specified AMI, instance type, key name, and user data (the redis.sh script).
+        Associates the Redis security group with the instance.
+        Places the instance in the specified subnet.
+        Tags the instance with a name based on the project_name variable.
+
+    RDS Security Group:
+        Creates an AWS security group named "rds" with an ingress rule allowing TCP traffic on port 3306 from all IP addresses (0.0.0.0/0 and ::/0).
+        Specifies egress rules that allow all traffic (from port 0 to port 0) to all IP addresses.
+        Tags the security group with a name based on the project_name variable.
+
+    RDS Subnet Group:
+        Creates an AWS RDS subnet group named "rds_subnet" and associates it with the specified private subnets.
+
+    RDS Instance:
+        Creates an AWS RDS instance with the specified engine, storage, version, instance class, credentials, subnet group, security group, and other configurations.
+        
+```
+## create sg for redis server
+
+resource "aws_security_group" "redis" {
+  name_prefix = "${var.project_name}-"
+  description = "Allow access to port"
+  vpc_id      = aws_vpc.main.id
+  ingress {
+    from_port        = 6379
+    to_port          = 6379
+    protocol         = "tcp"
+    cidr_blocks      = ["0.0.0.0/0"]
+    ipv6_cidr_blocks = ["::/0"]
+  }
+
+
+  egress {
+    from_port        = 0
+    to_port          = 0
+    protocol         = "-1"
+    cidr_blocks      = ["0.0.0.0/0"]
+    ipv6_cidr_blocks = ["::/0"]
+  }
+
+  tags = {
+    Name = "${var.project_name}"
+
+  }
+}
+
+
+# create redis server
+
+resource "aws_instance" "redis" {
+
+  ami                    = var.ami_id
+  instance_type          = var.instance_type
+  key_name               = "mumbai-region"
+  vpc_security_group_ids = [aws_security_group.redis.id]
+  user_data              = file("redis.sh")
+  subnet_id              = aws_subnet.privatesubnets[0].id
+  tags = {
+    Name = "${var.project_name}-redis"
+  }
+}
+
+# create sg for rds
+
+resource "aws_security_group" "rds" {
+  name_prefix = "${var.project_name}-"
+  vpc_id      = aws_vpc.main.id
+
+  ingress {
+    from_port        = 3306
+    to_port          = 3306
+    protocol         = "tcp"
+    cidr_blocks      = ["0.0.0.0/0"]
+    ipv6_cidr_blocks = ["::/0"]
+
+    # security_groups = [aws_security_group.frontend.id]
+  }
+
+
+  egress {
+    from_port        = 0
+    to_port          = 0
+    protocol         = "-1"
+    cidr_blocks      = ["0.0.0.0/0"]
+    ipv6_cidr_blocks = ["::/0"]
+  }
+
+  tags = {
+    Name = "${var.project_name}-rds"
+
+  }
+}
+
+# create subnet group & rds
+
+resource "aws_db_subnet_group" "subnet_rds" {
+  name = "rds_subnet"
+  subnet_ids = [
+    aws_subnet.privatesubnets[0].id,
+    aws_subnet.privatesubnets[1].id
+  ]
+}
+
+resource "aws_db_instance" "rds" {
+  engine                 = "mysql"
+  identifier             = "myrdsinstance"
+  allocated_storage      = 20
+  engine_version         = "5.7"
+  instance_class         = "db.t2.micro"
+  username               = "myrdsuser"
+  password               = "myrdspassword"
+  parameter_group_name   = "default.mysql5.7"
+  db_subnet_group_name   = aws_db_subnet_group.subnet_rds.name
+  vpc_security_group_ids = ["${aws_security_group.rds.id}"]
+  skip_final_snapshot    = true
+  publicly_accessible    = true
+```
