@@ -617,3 +617,55 @@ resource "aws_autoscaling_group" "asg_wiki" {
 
 }
 ```
+### Step 4 - Configuring Route53 records
+
+> Here, I have set up a private hosted zone to configure private IP addresses for your Redis and RDS instances with a private domain name is a good practice.
+
+> Create CNAME records for wiki.ashna.online and blog.ashna.online that point to load balancer's DNS name. By setting up these CNAME records, incoming requests to wiki.ashna.online and blog.ashna.online will be directed to load balancer.
+
+> In our code, we have defined listener rules for load balancer. The listener rule for wiki.ashna.online specifies the target group aws_lb_target_group.wiki for forwarding the traffic. Similarly, the listener rule for blog.ashna.online specifies the target group aws_lb_target_group.blog for forwarding the traffic.
+
+> Therefore, requests coming to wiki.ashna.online will be forwarded to the target group aws_lb_target_group.wiki, and requests coming to blog.ashna.online will be forwarded to the target group aws_lb_target_group.blog.
+
+This setup allows to route traffic based on the host header, enabling us to direct requests to the appropriate target group based on the subdomain.
+
+```
+resource "aws_route53_zone" "private" {
+  name = "ashna.local"
+
+  vpc {
+    vpc_id = aws_vpc.main.id
+  }
+}
+
+resource "aws_route53_record" "wiki" {
+  zone_id = data.aws_route53_zone.myzone.id
+  name    = "wiki"
+  type    = "CNAME"
+  ttl     = 300
+  records = [aws_lb.alb.dns_name]
+}
+
+resource "aws_route53_record" "blog" {
+  zone_id = data.aws_route53_zone.myzone.id
+  name    = "blog"
+  type    = "CNAME"
+  ttl     = 300
+  records = [aws_lb.alb.dns_name]
+}
+resource "aws_route53_record" "redis" {
+  zone_id = aws_route53_zone.private.zone_id
+  name    = "redis"
+  type    = "A"
+  ttl     = 300
+  records = [aws_instance.redis.private_ip]
+}
+
+resource "aws_route53_record" "rds" {
+  zone_id = aws_route53_zone.private.zone_id
+  name    = "rds"
+  type    = "CNAME"
+  ttl     = 300
+  records = [aws_db_instance.rds.address]
+}
+```
