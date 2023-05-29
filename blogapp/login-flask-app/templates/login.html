@@ -1,0 +1,16 @@
+<!doctype html>
+<html>
+  <head>
+    <title>Login</title>
+  </head>
+  <body>
+    {% if error %}
+      <p>{{ error }}</p>
+    {% endif %}
+    <form method="post">
+	    <label for="username">Username {{hostname}}:</label>
+      <input type="text" id="username" name="username" required>
+      <button type="submit">Log In</button>
+    </form>
+  </body>
+</html>
