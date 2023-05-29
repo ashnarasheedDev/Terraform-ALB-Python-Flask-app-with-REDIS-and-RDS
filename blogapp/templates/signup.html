@@ -1,0 +1,78 @@
+<!doctype html>
+<html>
+  <head>
+    <title>Sign Up</title>
+    <style>
+      body {
+        background-color: #f1f1f1;
+      }
+      
+      h1 {
+        color: blue;
+        text-align: center;
+      }
+      
+      form {
+        margin-top: 50px;
+        text-align: center;
+      }
+      
+      input[type=text], input[type=password] {
+        padding: 10px;
+        border: none;
+        border-radius: 3px;
+        margin-right: 10px;
+        width: 250px;
+      }
+      
+      button[type=submit] {
+        background-color: blue;
+        color: #fff;
+        border: none;
+        border-radius: 3px;
+        padding: 10px 20px;
+        cursor: pointer;
+      }
+      
+      .error {
+        color: red;
+        text-align: center;
+        margin-top: 20px;
+      }
+      
+      .hostname {
+        text-align: center;
+        margin-top: 50px;
+	font-size: 25px;
+      }
+
+      #signup-link {
+        margin-top: 20px;
+        text-align: center;
+      }
+      
+      #signup-link a {
+        color: blue;
+        text-decoration: none;
+      }
+    </style>
+  </head>
+  <body>
+    {% if error %}
+    <p class="error">{{ error }}</p>
+    {% endif %}
+    <h1>Sign Up</h1>
+    <p class="hostname">{{ hostname }}</p>
+    <form method="post">
+      <label for="username">Username:</label>
+      <input type="text" id="username" name="username" required><br><br>
+      <label for="password">Password:</label>
+      <input type="password" id="password" name="password" required><br><br>
+      <button type="submit">Sign Up</button>
+    </form>
+    <div id="signup-link">
+      <a href="{{ url_for('login') }}">Already have an account?</a>
+    </div>
+  </body>
+</html>
+

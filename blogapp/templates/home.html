@@ -1,0 +1,114 @@
+<!doctype html>
+<html>
+  <head>
+    <title>Blog Posts</title>
+    <style>
+      body {
+        background-color: #f1f1f1;
+      }
+      
+      h1 {
+        color: blue;
+        text-align: center;
+        margin-top: 50px;
+      }
+      
+      h3 {
+        text-align: center;
+        margin-top: 20px;
+      }
+
+      ul {
+        list-style-type: none;
+        padding-left: 0;
+        text-align: center;
+        margin-top: 50px;
+      }
+
+      li {
+        margin-bottom: 10px;
+        text-align: left;
+      }
+      
+      .error {
+        color: red;
+        text-align: center;
+        margin-top: 20px;
+      }
+      
+      a {
+        color: blue;
+        text-decoration: none;
+      }
+
+      .blog-title {
+        font-size: 26px;
+      }
+      
+      .delete-button, .edit-button {
+        background-color: #f1c40f;
+        color: #fff;
+        border: none;
+        border-radius: 3px;
+        padding: 5px 10px;
+        margin-left: 5px;
+        font-size: 14px;
+      }
+      
+      .delete-button {
+        background-color: #e74c3c;
+      }
+
+      .delete-button:hover, .edit-button:hover {
+        cursor: pointer;
+      }
+      
+      form {
+        text-align: center;
+        margin-top: 50px;
+      }
+      
+      button[type=submit] {
+        background-color: blue;
+        color: #fff;
+        border: none;
+        border-radius: 3px;
+        padding: 10px 20px;
+        cursor: pointer;
+      }
+    </style>
+  </head>
+  <body> 
+    <h1>Blog Posts </h1>
+    <h3>[logged in as {{name}}]</h3>
+    <h3>{{ hostname }}</h3>
+  
+    {% if error %}
+      <p class="error">{{ error }}</p>
+    {% endif %}
+
+    {% if posts %}
+      <ul>
+        {% for post in posts %}
+          <li>
+            <a class="blog-title" href="{{ url_for('blog', id=post.id) }}">{{ post.title }}</a>
+            <a class="delete-button" href="{{ url_for('delete_blog_post', blog_id=post.id) }}">delete</a>
+            <a class="edit-button" href="{{ url_for('edit_blog_post', blog_id=post.id) }}">edit</a>
+          </li>
+        {% endfor %}
+      </ul>
+    {% else %}
+      <p>No posts found.</p>
+    {% endif %}
+
+    <form action="{{ url_for('logout') }}" method="post">
+      <button type="submit">Log out</button>
+    </form>
+
+    <form action="{{ url_for('create_blog_post') }}" method="post">
+      <button type="submit">Add a Blog</button>
+    </form>
+
+  </body>
+</html>
+
